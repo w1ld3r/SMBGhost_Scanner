@@ -12,6 +12,7 @@ import json
 
 DELAY = 3
 SMB_PORT = 445
+MASSCAN_MAXRATE = 100000
 SHODAN_API_KEY = ''
 BASE_URL = 'https://api.shodan.io'
 SHODAN_OUTPUT_FILE = 'smbghost.json'
@@ -21,9 +22,9 @@ def parse(args):
     parser.add_argument('-t', '--target', metavar='target', \
         help='ip or network to querry')
     parser.add_argument('-f', '--file', metavar='file', \
-        help='file containing a target list (ip or network)', type=argparse.FileType('r'))
+        help='file containing a target list (ip or network)')
     parser.add_argument('-o', '--output', metavar='file',\
-         help='json file containing shodan results', type=argparse.FileType('w'))
+        help='json file containing shodan results', type=argparse.FileType('w'))
 
     if len(args) == 1:
         parser.print_help()
@@ -42,7 +43,7 @@ def main(args):
             except:
                 targets = get_ips(verify_network(target), targets)
         if args.file:
-            targets = read_ip_from_file(args.file, targets)
+            targets = get_ips(args.file, targets, True)
     except:
         sys.exit('[!] Input not reconize !\n')
 
@@ -58,7 +59,8 @@ def main(args):
                     shodan_search(result, f)
         else:
             display_result(result)
-
+    else:
+        print('[+] No CVE-2020-0796 - SMBGhost detected')
 
 def verify_network(target):
     try:
@@ -66,23 +68,20 @@ def verify_network(target):
         return target
     except ValueError:
         return
-            
-def read_ip_from_file(file, targets):
-    for line in file:
-        targets.add(line.replace('\n', ''))
-    return targets
 
-def get_ips(network, targets):
-    if network:
-        cmd = f"sudo masscan -p{SMB_PORT} {network} --max-rate 100000"
+def get_ips(targets, results, file=False):
+    if targets:
+        if file:
+            cmd = f"sudo masscan -p{SMB_PORT} -iL {targets} --max-rate {MASSCAN_MAXRATE}"
+        else:
+            cmd = f"sudo masscan -p{SMB_PORT} {targets} --max-rate {MASSCAN_MAXRATE}"
         try:
             ret = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
         except:
-            print('[!] Unable to perform masscan')
-            sys.exit(2)
+            sys.exit('[!] Unable to perform masscan')
         for line in ret.stdout.readlines():
-            targets.add(line.decode().split()[5])
-    return targets
+            results.add(line.decode().split()[5])
+    return results
 
 def scann(ip, q):
     pkt = b'\x00\x00\x00\xc0\xfeSMB@\x00\x00\x00\x00\x00\x00\x00\x00\x00\x1f\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00$\x00\x08\x00\x01\x00\x00\x00\x7f\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00x\x00\x00\x00\x02\x00\x00\x00\x02\x02\x10\x02"\x02$\x02\x00\x03\x02\x03\x10\x03\x11\x03\x00\x00\x00\x00\x01\x00&\x00\x00\x00\x00\x00\x01\x00 \x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x03\x00\n\x00\x00\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00'
@@ -122,7 +121,10 @@ def shodan_search(q, file):
         ip = q.get()
         data = get_host_info(ip)
         if 'error' in data:
-            result['smbghost'].append({'ip': ip})
+            result['smbghost'].append({
+                'ip': ip,
+                'open_ports': SMB_PORT
+            })
         else:
             result['smbghost'].append({
                 'ip': ip,
