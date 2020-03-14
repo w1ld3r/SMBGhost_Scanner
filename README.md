@@ -1,7 +1,7 @@
 # SMBGhost
-Advanced scanner for CVE-2020-0796 - SMBv3 RCE using [ollypwn](https://github.com/ollypwn) detection technique ([SMBGhost](https://github.com/ollypwn/SMBGhost)) 
+Advanced scanner for CVE-2020-0796 - SMBv3 RCE using [ollypwn](https://github.com/ollypwn) detection technique ([SMBGhost](https://github.com/ollypwn/SMBGhost)).
 
-It can scan the internet/network using masscan or, a single ip.
+It can scan the entire internet using masscan or, a single ip.
 
 It can get more informations about targets using Shodan (API key required) and write results to json file.
 
