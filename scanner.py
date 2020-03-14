@@ -17,10 +17,13 @@ BASE_URL = 'https://api.shodan.io'
 SHODAN_OUTPUT_FILE = 'smbghost.json'
 
 def parse(args):
-    parser = argparse.ArgumentParser(description='Vulnerable SMBv3 Search')
-    parser.add_argument('-t', '--target', metavar='target', help='ip or network to querry')
-    parser.add_argument('-f', '--file', metavar='file', help='file containing a target list (ip, network)', type=argparse.FileType('r'))
-    parser.add_argument('-o', '--output', metavar='file', help='json file containing shodan results', type=argparse.FileType('w'))
+    parser = argparse.ArgumentParser(description='Vulnerable SMBv3 Scanner - CVE-2020-0796')
+    parser.add_argument('-t', '--target', metavar='target', \
+        help='ip or network to querry')
+    parser.add_argument('-f', '--file', metavar='file', \
+        help='file containing a target list (ip or network)', type=argparse.FileType('r'))
+    parser.add_argument('-o', '--output', metavar='file',\
+         help='json file containing shodan results', type=argparse.FileType('w'))
 
     if len(args) == 1:
         parser.print_help()
@@ -29,6 +32,7 @@ def parse(args):
 
 def main(args):
     targets = set()
+    result = multiprocessing.Queue()
     try:
         if args.target:
             target = args.target
@@ -43,7 +47,7 @@ def main(args):
         sys.exit('[!] Input not reconize !\n')
 
     if targets:
-        result = run(targets)
+        result = run(targets, result)
 
     if not result.empty():
         if SHODAN_API_KEY:
@@ -96,14 +100,12 @@ def scann(ip, q):
     except:
         return
 
-    if not res[68:70] == b'\x11\x03':
+    if res[68:70] != b'\x11\x03' or res[70:72] != b'\x02\x00':
         return
-    if not res[70:72] == b'\x02\x00':
-        return
+
     q.put(ip)
 
-def run(targets):
-    q = multiprocessing.Queue()
+def run(targets, q):
     for ip in targets:
         p = multiprocessing.Process(target=scann, args=(ip, q))
         p.start()
