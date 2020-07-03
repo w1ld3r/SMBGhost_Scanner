@@ -77,9 +77,9 @@ def verify_network(target):
 def get_ips(targets, results, file=False):
     if targets:
         if file:
-            cmd = f"sudo masscan -p{} -iL {} --max-rate {}".format(SMB_PORT, targets, MASSCAN_MAXRATE)
+            cmd = "sudo masscan -p{} -iL {} --max-rate {}".format(SMB_PORT, targets, MASSCAN_MAXRATE)
         else:
-            cmd = f"sudo masscan -p{} {} --max-rate {}".format(SMB_PORT, targets, MASSCAN_MAXRATE)
+            cmd = "sudo masscan -p{} {} --max-rate {}".format(SMB_PORT, targets, MASSCAN_MAXRATE)
         if targets == "0.0.0.0/0":
             cmd += " --exclude 255.255.255.255"
         try:
