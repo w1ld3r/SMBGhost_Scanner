@@ -17,19 +17,22 @@ SHODAN_API_KEY = ''
 BASE_URL = 'https://api.shodan.io'
 SHODAN_OUTPUT_FILE = 'smbghost.json'
 
+
 def parse(args):
-    parser = argparse.ArgumentParser(description='Vulnerable SMBv3 Scanner - CVE-2020-0796')
-    parser.add_argument('-t', '--target', metavar='target', \
-        help='ip or network to querry')
-    parser.add_argument('-f', '--file', metavar='file', \
-        help='file containing a target list (ip or network)')
-    parser.add_argument('-o', '--output', metavar='file',\
-        help='json file containing shodan results', type=argparse.FileType('w'))
+    parser = argparse.ArgumentParser(
+        description='[CVE-2020-0796] SMBv3 Scanner')
+    parser.add_argument('-t', '--target', metavar='target',
+                        help='ip or network to querry')
+    parser.add_argument('-f', '--file', metavar='file',
+                        help='file containing a target list (ip or network)')
+    parser.add_argument('-o', '--output', metavar='file',
+                        help='json file containing shodan results', type=argparse.FileType('w'))
 
     if len(args) == 1:
         parser.print_help()
     else:
         main(parser.parse_args())
+
 
 def main(args):
     targets = set()
@@ -62,6 +65,7 @@ def main(args):
     else:
         print('[+] No CVE-2020-0796 - SMBGhost detected')
 
+
 def verify_network(target):
     try:
         ipaddress.ip_network(target)
@@ -69,14 +73,15 @@ def verify_network(target):
     except ValueError:
         return
 
+
 def get_ips(targets, results, file=False):
     if targets:
         if file:
-            cmd = f"sudo masscan -p{SMB_PORT} -iL {targets} --max-rate {MASSCAN_MAXRATE}"
+            cmd = f"sudo masscan -p{} -iL {} --max-rate {}".format(SMB_PORT, targets, MASSCAN_MAXRATE)
         else:
-            cmd = f"sudo masscan -p{SMB_PORT} {targets} --max-rate {MASSCAN_MAXRATE}"
+            cmd = f"sudo masscan -p{} {} --max-rate {}".format(SMB_PORT, targets, MASSCAN_MAXRATE)
         if targets == "0.0.0.0/0":
-         cmd += " --exclude 255.255.255.255"
+            cmd += " --exclude 255.255.255.255"
         try:
             ret = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
         except:
@@ -85,13 +90,14 @@ def get_ips(targets, results, file=False):
             results.add(line.decode().split()[5])
     return results
 
+
 def scann(ip, q):
     pkt = b'\x00\x00\x00\xc0\xfeSMB@\x00\x00\x00\x00\x00\x00\x00\x00\x00\x1f\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00$\x00\x08\x00\x01\x00\x00\x00\x7f\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00x\x00\x00\x00\x02\x00\x00\x00\x02\x02\x10\x02"\x02$\x02\x00\x03\x02\x03\x10\x03\x11\x03\x00\x00\x00\x00\x01\x00&\x00\x00\x00\x00\x00\x01\x00 \x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x03\x00\n\x00\x00\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00'
 
     try:
         sock = socket.socket(socket.AF_INET)
         sock.settimeout(DELAY)
-        sock.connect(( ip,  SMB_PORT ))
+        sock.connect((ip,  SMB_PORT))
         sock.send(pkt)
     except:
         return
@@ -106,6 +112,7 @@ def scann(ip, q):
 
     q.put(ip)
 
+
 def run(targets, q):
     for ip in targets:
         p = multiprocessing.Process(target=scann, args=(ip, q))
@@ -113,9 +120,11 @@ def run(targets, q):
     p.join()
     return q
 
+
 def display_result(q):
     while not q.empty():
         print(q.get())
+
 
 def shodan_search(q, file):
     result = {'smbghost': []}
@@ -142,50 +151,60 @@ def shodan_search(q, file):
             })
     json.dump(result, file)
 
+
 def get_host_info(ip):
     uri = '/shodan/host/%s' % ip
     try:
-        r = requests.get(BASE_URL+uri, params={'key':SHODAN_API_KEY})
+        r = requests.get(BASE_URL+uri, params={'key': SHODAN_API_KEY})
     except:
         return
     return r.json()
 
+
 def reverse_dns(ip):
     uri = '/dns/reverse?ips=%s' % ip
     try:
-        r = requests.get(BASE_URL+uri, params={'key':SHODAN_API_KEY})
+        r = requests.get(BASE_URL+uri, params={'key': SHODAN_API_KEY})
     except:
         return
     d = r.json()
     if 'error' in d:
         return
-    return d[ip]   
+    return d[ip]
+
 
 def get_honeyscore(ip):
     uri = '/labs/honeyscore/%s' % ip
     try:
-        r = requests.get(BASE_URL+uri, params={'key':SHODAN_API_KEY})
+        r = requests.get(BASE_URL+uri, params={'key': SHODAN_API_KEY})
     except:
         return
     return r.json()
 
+
 def get_city(d):
     return d['city']
+
 
 def get_country(d):
     return d['country_name']
 
+
 def get_org(d):
     return d['org']
+
 
 def get_isp(d):
     return d['isp']
 
+
 def get_last_update(d):
     return d['last_update']
 
+
 def get_open_ports(d):
     return d['ports']
+
 
 def get_vulns(data):
     vulns = []
@@ -195,6 +214,7 @@ def get_vulns(data):
         except:
             pass
     return vulns
+
 
 if __name__ == "__main__":
     parse(sys.argv)
