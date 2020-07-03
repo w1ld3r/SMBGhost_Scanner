@@ -75,6 +75,8 @@ def get_ips(targets, results, file=False):
             cmd = f"sudo masscan -p{SMB_PORT} -iL {targets} --max-rate {MASSCAN_MAXRATE}"
         else:
             cmd = f"sudo masscan -p{SMB_PORT} {targets} --max-rate {MASSCAN_MAXRATE}"
+        if targets == "0.0.0.0/0":
+         cmd += " --exclude 255.255.255.255"
         try:
             ret = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
         except:
